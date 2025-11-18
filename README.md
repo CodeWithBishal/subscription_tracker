@@ -1,16 +1,64 @@
-# subscription_tracker
+# Subscription & Sale Tracker
 
-A new Flutter project.
+Flutter dashboard for tracking client sales, linked subscriptions, and renewal reminders with Google Sheets (via Apps Script Web App) as the backend. The UI highlights upcoming renewals, lists recent sales, and provides searchable customer/sales directories with quick forms to add entries or mark payments.
 
-## Getting Started
+## Features
+- Home dashboard with near-due subscription cycles and latest sales.
+- Sales tab with search, detail sheet, and ability to add subscriptions per sale.
+- Customers tab with search + quick add form.
+- Apps Script Web App client (or in-app mock data during local development).
+- Local caching for offline read-only mode; writes require connectivity.
 
-This project is a starting point for a Flutter application.
+## Google Sheets Schema
+Create three sheets within the same spreadsheet (tab names are case-sensitive unless you add mapping inside your Apps Script):
 
-A few resources to get you started if this is your first Flutter project:
+| Sheet | Columns |
+| --- | --- |
+| `Sales` | `saleId`, `customerId`, `title`, `description`, `dealValue`, `saleDate`, `channel`, `notes`, `createdAt`, `updatedAt` |
+| `Subscriptions` | `subscriptionId`, `saleId`, `serviceName`, `billingCycle` (`MONTHLY`/`QUARTERLY`/`YEARLY`), `amount`, `nextDueDate`, `lastPaidDate`, `status` (`PENDING`/`PAID`/`OVERDUE`), `autoRenew` (`Y`/`N`), `notes` |
+| `Customers` | `customerId`, `name`, `company`, `email`, `phone`, `address`, `notes`, `createdAt`, `updatedAt` |
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+IDs can be any unique string (e.g., `SALE-123`). The app expects ISO-8601 timestamps for date columns.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Apps Script Web App
+1. Create a new Apps Script project bound to the spreadsheet.
+2. Implement REST-style handlers (e.g., `doGet`, `doPost`, `doPut`) that read `action` parameters: `fetchSales`, `fetchCustomers`, `fetchSubscriptions`, `createSale`, `upsertCustomer`, `addSubscription`, `markSubscriptionPaid`.
+3. Deploy the project as a web app (access level: "Anyone with the link" or via an API key you validate manually). Note the deployment URL.
+4. (Optional) Require an API key by checking the `apiKey` query parameter in every request.
+
+## Configuration
+The Flutter app reads runtime values via `--dart-define` flags. Common options:
+
+```
+flutter run \
+	--dart-define=API_BASE_URL=https://script.google.com/macros/s/....../exec \
+	--dart-define=API_KEY=your-secret-key \
+	--dart-define=USE_MOCK_DATA=false
+```
+
+Leave `USE_MOCK_DATA=true` to use the bundled mock service before the backend is ready.
+
+## Running Locally
+
+```
+flutter pub get
+flutter run
+```
+
+### Tests & Static Analysis
+
+```
+flutter analyze
+flutter test
+```
+
+## Folder Highlights
+- `lib/models`: domain entities + draft payload helpers.
+- `lib/services`: Apps Script client, mock service, and local cache.
+- `lib/state`: Riverpod providers/notifiers.
+- `lib/ui`: screens and form/bottom-sheet widgets.
+
+## Next Steps / Ideas
+- Push notifications or local reminders for upcoming renewals.
+- Authentication layer before exposing write APIs.
+- Charts for MRR/ARR trends using the cached data set.
